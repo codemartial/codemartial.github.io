@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Maker of Software and Photographs on Tahir Hashmi</title>
+    <link>https://codemartial.github.io/</link>
+    <description>Recent content in Maker of Software and Photographs on Tahir Hashmi</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-GB</language>
+    <managingEditor>mail@tahirhashmi.com (Tahir Hashmi)</managingEditor>
+    <webMaster>mail@tahirhashmi.com (Tahir Hashmi)</webMaster><atom:link href="https://codemartial.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Career</title>
+      <link>https://codemartial.github.io/about/career/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://codemartial.github.io/about/career/</guid>
+      <description>20 years of experience in software development, leadership and innovation at 100M+ user companies valued over $10B. Domain experience in e-commerce, cloud services, gaming and social media.</description>
+    </item>
+    
+    <item>
+      <title>Credits</title>
+      <link>https://codemartial.github.io/about/credits/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://codemartial.github.io/about/credits/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Lean Software Development Environment</title>
+      <link>https://codemartial.github.io/posts/3_lean/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://codemartial.github.io/posts/3_lean/</guid>
+      <description>One of the biggest differentiators between an effective technology team and an ineffective one is not the average technology skill level of its members, but the maturity of the team’s software development methodology. In other words, a team of less skilled developers with better methodology would outperform a team of more skilled developers with poor methodology. Wouldn’t it be wonderful if you could succeed with competent talent instead of battling for the elusive “rockstars” in the talent market?</description>
+    </item>
+    
+    <item>
+      <title>Tahir&#39;s Bio</title>
+      <link>https://codemartial.github.io/about/tahir/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://codemartial.github.io/about/tahir/</guid>
+      <description>e-commerce guy, camera junkie, father of two</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+ "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg version="1.1"
+xmlns="https://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+height="100px" width="200px" viewbox="0 0 100 200" preserveAspectRatio="xMidYMid meet">
+    <defs>
+        <radialGradient id="logoGradient">
+            <stop offset="30%" stop-color="yellow"/>
+            <stop offset="67%" stop-color="red" />
+            <stop offset="100%" stop-color="purple"/>
+        </radialGradient>
+    </defs>
+    <polygon points="0, 67 80, 0 100, 100 120, 0 200, 67 120, 33 100, 67 80, 33" fill="url(#logoGradient)" />
+</svg>
