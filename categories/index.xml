@@ -2,18 +2,18 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Categories on Tahir Hashmi</title>
-    <link>https://codemartial.github.io/categories/</link>
+    <link>https://tahirhashmi.com/categories/</link>
     <description>Recent content in Categories on Tahir Hashmi</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-GB</language>
     <managingEditor>mail@tahirhashmi.com (Tahir Hashmi)</managingEditor>
-    <webMaster>mail@tahirhashmi.com (Tahir Hashmi)</webMaster><atom:link href="https://codemartial.github.io/categories/index.xml" rel="self" type="application/rss+xml" />
+    <webMaster>mail@tahirhashmi.com (Tahir Hashmi)</webMaster><atom:link href="https://tahirhashmi.com/categories/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>technology</title>
-      <link>https://codemartial.github.io/categories/technology/</link>
+      <link>https://tahirhashmi.com/categories/technology/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
-      <guid>https://codemartial.github.io/categories/technology/</guid>
+      <guid>https://tahirhashmi.com/categories/technology/</guid>
       <description></description>
     </item>
     
