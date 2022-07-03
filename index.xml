@@ -9,39 +9,48 @@
     <managingEditor>mail@tahirhashmi.com (Tahir Hashmi)</managingEditor>
     <webMaster>mail@tahirhashmi.com (Tahir Hashmi)</webMaster><atom:link href="https://tahirhashmi.com/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Career</title>
-      <link>https://tahirhashmi.com/about/career/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
-      <guid>https://tahirhashmi.com/about/career/</guid>
-      <description>20 years of experience in software development, leadership and innovation at 100M+ user companies valued over $10B. Domain experience in e-commerce, cloud services, gaming and social media.</description>
-    </item>
-    
-    <item>
-      <title>Credits</title>
-      <link>https://tahirhashmi.com/about/credits/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
-      <guid>https://tahirhashmi.com/about/credits/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Lean Software Development Environment</title>
-      <link>https://tahirhashmi.com/posts/3_lean/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
-      <guid>https://tahirhashmi.com/posts/3_lean/</guid>
-      <description>One of the biggest differentiators between an effective technology team and an ineffective one is not the average technology skill level of its members, but the maturity of the team’s software development methodology. In other words, a team of less skilled developers with better methodology would outperform a team of more skilled developers with poor methodology. Wouldn’t it be wonderful if you could succeed with competent talent instead of battling for the elusive “rockstars” in the talent market?</description>
-    </item>
-    
-    <item>
       <title>Tahir&#39;s Bio</title>
       <link>https://tahirhashmi.com/about/tahir/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
       <guid>https://tahirhashmi.com/about/tahir/</guid>
-      <description>e-commerce guy, camera junkie, father of two</description>
+      <description>&lt;p&gt;e-commerce guy, camera junkie, father of two&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>Career</title>
+      <link>https://tahirhashmi.com/about/career/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://tahirhashmi.com/about/career/</guid>
+      <description>&lt;p&gt;20 years of experience in software development, leadership and innovation at 100M+ user companies valued over $10B. Domain experience in e-commerce, cloud services, gaming and social media.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>Hello Photographers!</title>
+      <link>https://tahirhashmi.com/posts/hellophoto/</link>
+      <pubDate>Sun, 03 Jul 2022 11:20:45 +0700</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://tahirhashmi.com/posts/hellophoto/</guid>
+      <description>I hope to write more about photography here soon. In the mean time, do feel free to check out my old photography blog and my flickr photostream.</description>
+    </item>
+    
+    <item>
+      <title>Hello Technologists!</title>
+      <link>https://tahirhashmi.com/posts/hellotech/</link>
+      <pubDate>Sun, 03 Jul 2022 11:20:36 +0700</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://tahirhashmi.com/posts/hellotech/</guid>
+      <description>&lt;p&gt;I hope to write more about technology here soon. In the mean time, do feel free to check out my &lt;a href=&#34;https://tech.t9i.in&#34;&gt;old technology blog&lt;/a&gt;.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>Making-of &amp; Credits</title>
+      <link>https://tahirhashmi.com/about/credits/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <author>mail@tahirhashmi.com (Tahir Hashmi)</author>
+      <guid>https://tahirhashmi.com/about/credits/</guid>
+      <description>&lt;p&gt;This website is made with &lt;a href=&#34;https://gohugo.io&#34;&gt;Hugo&lt;/a&gt; and hosted on &lt;a href=&#34;https://pages.github.io&#34;&gt;Github Pages&lt;/a&gt;&lt;/p&gt;</description>
     </item>
     
   </channel>
