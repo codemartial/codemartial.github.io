@@ -1,0 +1,218 @@
+<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width"><title>Inheritance Semantics in Go by Tahir Hashmi</title><meta name=description content><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><meta name=msapplication-TileColor content="#da532c"><meta name=theme-color content="#ffffff"><link rel=canonical href=https://tahirhashmi.com/posts/2014/01/22/inheritance-semantics-in-go/><link rel=alternate type=application/rss+xml href=https://tahirhashmi.com/index.xml><meta property="og:title" content="Inheritance Semantics in Go"><meta property="og:description" content="Contemporary application design discipline is deeply rooted in Object Oriented Analysis and Design and inheritance is a key concept in OOAD. Go does not support classes and inheritance in their classic OOP sense but since many of us are trained in OOP, the loss of an important design concept sometimes feels restrictive.
+Even though I knew about embedding and interfaces, their connection with classic inheritance wasn’t quite obvious. I set out to understand how I could emulate the coarse inheritance semantics in Go, without going into fine nuances."><meta property="og:type" content="article"><meta property="og:url" content="https://tahirhashmi.com/posts/2014/01/22/inheritance-semantics-in-go/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2014-01-22T11:16:12+00:00"><meta property="article:modified_time" content="2022-10-22T22:22:50+07:00"><meta name=twitter:card content="summary"><meta name=twitter:title content="Inheritance Semantics in Go"><meta name=twitter:description content="Contemporary application design discipline is deeply rooted in Object Oriented Analysis and Design and inheritance is a key concept in OOAD. Go does not support classes and inheritance in their classic OOP sense but since many of us are trained in OOP, the loss of an important design concept sometimes feels restrictive.
+Even though I knew about embedding and interfaces, their connection with classic inheritance wasn’t quite obvious. I set out to understand how I could emulate the coarse inheritance semantics in Go, without going into fine nuances."><meta itemprop=name content="Inheritance Semantics in Go"><meta itemprop=description content="Contemporary application design discipline is deeply rooted in Object Oriented Analysis and Design and inheritance is a key concept in OOAD. Go does not support classes and inheritance in their classic OOP sense but since many of us are trained in OOP, the loss of an important design concept sometimes feels restrictive.
+Even though I knew about embedding and interfaces, their connection with classic inheritance wasn’t quite obvious. I set out to understand how I could emulate the coarse inheritance semantics in Go, without going into fine nuances."><meta itemprop=datePublished content="2014-01-22T11:16:12+00:00"><meta itemprop=dateModified content="2022-10-22T22:22:50+07:00"><meta itemprop=wordCount content="1348"><meta itemprop=keywords content="Go,Golang,Inheritance,OOP,programming,"><link rel=stylesheet href=/assets/css/main.min.aa291f4a1468fe8ac611dffbcaee5c517c3ccfe256bfcb86dc2838cffdd62694.css media=all></head><body class=page><div id=headline><h1>Inheritance Semantics in Go</h1></div><div id=content><main><article><time datetime="2022-10-22 22:22:50 +0700 +0700" itemprop=datePublished>October 22, 2022</time><p>Contemporary application design discipline is deeply rooted in Object Oriented Analysis and Design and inheritance is a key concept in OOAD. Go does not support classes and inheritance in their classic OOP sense but since many of us are trained in OOP, the loss of an important design concept sometimes feels restrictive.</p><p>Even though I knew about embedding and interfaces, their connection with classic inheritance wasn’t quite obvious. I set out to understand how I could emulate the coarse inheritance semantics in Go, without going into fine nuances. That in turn has helped me understand embedding and interfaces in a deeper way and I hope it would help me better design Go types and methods for extensibility.</p><h2 id=the-task>The Task</h2><p>For the purpose of this exercise, we shall attempt to emulate the following class hierarchy:</p><p><figure><img src=http://farm6.staticflickr.com/5531/12115373473_cbf175ec08_o.png alt="Class Diagram" style=max-width:100%;aspect-ratio:.38235294117647056><figcaption>Deriving from class “Hello”</figcaption></figure></p><p>The class <code>Hello</code> has two public methods along with its constructor. <code>genHello()</code> is used to generate a greeting message, like “Hello World!” while <code>sayHello()</code> actually prints it out. We shall derive <code>AltHello</code> class from <code>Hello</code>, which stores its own copy of the greeting and overrides the <code>genHello()</code> method to give us a different message.</p><p>Here’s an implementation of the above scheme in C++:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-c++ data-lang=c++><span style=display:flex><span><span style=color:#75715e>#include</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#include</span><span style=color:#75715e>
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#include</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>using namespace std;</span><span style=color:#75715e>
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Hello</span>
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>private</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>	string greeting;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>	Hello(string greeting) <span style=color:#f92672>:</span> greeting(greeting)
+</span></span><span style=display:flex><span>	{	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>virtual</span> string <span style=color:#a6e22e>genHello</span>(string <span style=color:#f92672>&amp;</span>to)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		ostringstream ss;
+</span></span><span style=display:flex><span>		ss <span style=color:#f92672>&lt;&lt;</span> <span style=color:#66d9ef>this</span><span style=color:#f92672>-&gt;</span>greeting <span style=color:#f92672>&lt;&lt;</span> <span style=color:#e6db74>&#34; &#34;</span> <span style=color:#f92672>&lt;&lt;</span> to <span style=color:#f92672>&lt;&lt;</span> <span style=color:#e6db74>&#34;!&#34;</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> ss.str();
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>virtual</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>sayHello</span>(string <span style=color:#f92672>&amp;</span>to)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		cout <span style=color:#f92672>&lt;&lt;</span> <span style=color:#66d9ef>this</span><span style=color:#f92672>-&gt;</span>genHello(to) <span style=color:#f92672>&lt;&lt;</span> endl;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>};
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>AltHello</span> <span style=color:#f92672>:</span> <span style=color:#66d9ef>public</span> Hello
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span> <span style=color:#66d9ef>private</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>	string greeting;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span> <span style=color:#66d9ef>public</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>	AltHello(string greeting) <span style=color:#f92672>:</span> greeting(greeting <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; `&#34;</span>), Hello(<span style=color:#e6db74>&#34;&#34;</span>)
+</span></span><span style=display:flex><span>	{}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	string <span style=color:#a6e22e>genHello</span>(string <span style=color:#f92672>&amp;</span>to)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		ostringstream ss;
+</span></span><span style=display:flex><span>		ss <span style=color:#f92672>&lt;&lt;</span> <span style=color:#66d9ef>this</span><span style=color:#f92672>-&gt;</span>greeting <span style=color:#f92672>&lt;&lt;</span> <span style=color:#e6db74>&#34;Alt&#39; &#34;</span> <span style=color:#f92672>&lt;&lt;</span> to <span style=color:#f92672>&lt;&lt;</span> <span style=color:#e6db74>&#34;!&#34;</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> ss.str();
+</span></span><span style=display:flex><span>		} 
+</span></span><span style=display:flex><span>}; 
+</span></span><span style=display:flex><span>	
+</span></span><span style=display:flex><span><span style=color:#66d9ef>int</span> <span style=color:#a6e22e>main</span>(<span style=color:#66d9ef>void</span>) {
+</span></span><span style=display:flex><span>	string greeting <span style=color:#f92672>=</span> string(<span style=color:#e6db74>&#34;Hello&#34;</span>); 
+</span></span><span style=display:flex><span>	string to <span style=color:#f92672>=</span> string(<span style=color:#e6db74>&#34;World&#34;</span>); 
+</span></span><span style=display:flex><span>	Hello <span style=color:#f92672>*</span>h <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Hello(greeting); 
+</span></span><span style=display:flex><span>	h<span style=color:#f92672>-&gt;</span>sayHello(to); <span style=color:#75715e>// Hello World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>	Hello <span style=color:#f92672>*</span>ah <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> AltHello(greeting);
+</span></span><span style=display:flex><span>	ah<span style=color:#f92672>-&gt;</span>sayHello(to); <span style=color:#75715e>// Hello `Alt&#39; World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>delete</span>(h);
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>delete</span>(ah);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The output from this program is:</p><pre tabindex=0><code>Hello World!
+Hello `Alt&#39; World!
+</code></pre><h2 id=type-embedding-and-implementation-inheritance>Type Embedding and Implementation Inheritance</h2><p>To inherit the implementation from another type in Go, we use embedding. So let’s try it out. Here is the first draft of our port of the above C++ code into Go.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> (
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;fmt&#34;</span>
+</span></span><span style=display:flex><span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Hello</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>greeting</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Println</span>(<span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span>))
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>greeting</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; &#34;</span> <span style=color:#f92672>+</span> <span style=color:#a6e22e>to</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;!&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>AltHello</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>greeting</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>Hello</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>a</span> <span style=color:#a6e22e>AltHello</span>) <span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>a</span>.<span style=color:#a6e22e>greeting</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;Alt&#39; &#34;</span> <span style=color:#f92672>+</span> <span style=color:#a6e22e>to</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;!&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>h</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>Hello</span>{<span style=color:#e6db74>&#34;Hello&#34;</span>}
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>SayHello</span>(<span style=color:#e6db74>&#34;World&#34;</span>) <span style=color:#75715e>// Hello World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>ah</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>AltHello</span>{<span style=color:#e6db74>&#34;Hello `&#34;</span>, <span style=color:#a6e22e>Hello</span>{<span style=color:#e6db74>&#34;&#34;</span>}}
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>ah</span>.<span style=color:#a6e22e>SayHello</span>(<span style=color:#e6db74>&#34;World&#34;</span>) <span style=color:#75715e>//  World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>When this program is executed, we get:</p><pre tabindex=0><code>Hello World!
+ World!
+</code></pre><p>Wait, this doesn’t match the C++ output. What are we missing? While <code>AltHello</code> inherited the implementation of <code>SayHello()</code> from <code>Hello</code>, the version of <code>GenHello()</code> that gets called is also from <code>Hello</code>. That neither picks up the data from <code>AltHello.greeting</code>, nor the altered formatting from <code>AltHello.GenHello()</code>. How do we make it such that we can call the derived version of <code>GenHello()</code> without having to re-implement <code>SayHello()</code>? The first step to achieving that is to be able to access both instances through a common type, like we do with <code>Hello*</code> in C++.</p><h2 id=type-substitution-through-interfaces>Type Substitution Through Interfaces</h2><p>Go accomplishes type substitution through the use of Interfaces. Interfaces allow us to define an abstract behaviour and have different types satisfy that behaviour. Since that’s the relationship we want to establish between our two types, let’s try creating an interface for the methods of our types and see how it goes.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> (
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;fmt&#34;</span>
+</span></span><span style=display:flex><span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Greeter</span> <span style=color:#66d9ef>interface</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>SayHello</span>(<span style=color:#66d9ef>string</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>GenHello</span>(<span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Hello</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>greeting</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Println</span>(<span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span>))
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>greeting</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; &#34;</span> <span style=color:#f92672>+</span> <span style=color:#a6e22e>to</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;!&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>NewHello</span>(<span style=color:#a6e22e>msg</span> <span style=color:#66d9ef>string</span>) <span style=color:#a6e22e>Hello</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>Hello</span>{<span style=color:#a6e22e>msg</span>}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>AltHello</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>greeting</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>Hello</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>a</span> <span style=color:#a6e22e>AltHello</span>) <span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>a</span>.<span style=color:#a6e22e>greeting</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;Alt&#39; &#34;</span> <span style=color:#f92672>+</span> <span style=color:#a6e22e>to</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;!&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>NewAltHello</span>(<span style=color:#a6e22e>msg</span> <span style=color:#66d9ef>string</span>) <span style=color:#a6e22e>AltHello</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>AltHello</span>{<span style=color:#a6e22e>msg</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; `&#34;</span>, <span style=color:#a6e22e>NewHello</span>(<span style=color:#e6db74>&#34;&#34;</span>)}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>g</span>, <span style=color:#a6e22e>ag</span> <span style=color:#a6e22e>Greeter</span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>g</span> = <span style=color:#a6e22e>NewHello</span>(<span style=color:#e6db74>&#34;Hello&#34;</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>g</span>.<span style=color:#a6e22e>SayHello</span>(<span style=color:#e6db74>&#34;World&#34;</span>) <span style=color:#75715e>// Hello World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>ag</span> = <span style=color:#a6e22e>NewAltHello</span>(<span style=color:#e6db74>&#34;Hello&#34;</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>ag</span>.<span style=color:#a6e22e>SayHello</span>(<span style=color:#e6db74>&#34;World&#34;</span>) <span style=color:#75715e>//  World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>The output from this is:</p><pre tabindex=0><code>Hello World!
+ World!
+</code></pre><p>The revised code has been highlighted in bold. Although, this has allowed us to unify <code>Hello</code> and <code>AltHello</code> under a common type, <code>Greeter</code>, it still hasn’t allowed us to achieve dynamic dispatch of <code>AltHello.GenHello()</code> through the interface. This is the part where I stumbled a bit because the expectation from classic OOP languages is that the above changes should be sufficient to enable dynamic dispatch.</p><p>What is actually happening here is that even though we can reach <code>Hello.SayHello()</code> from an <code>AltHello</code> instance, whether we go through an interface or not, <code>Hello.SayHello()</code> does not have the information needed to switch to <code>AltHello.GenHello()</code> where needed. To understand why, let’s look at the method implementation in isolation:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Println</span>(<span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span>))
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The parts in bold should highlight the problem more clearly. The receiver of <code>SayHello()</code> method is defined as an instance of type <code>Hello</code>. That being the case, <code>SayHello()</code> will <em>always</em> call <code>Hello.GenHello()</code>. How do we make <code>SayHello()</code> call <code>GenHello()</code> on the correct receiver?</p><h2 id=enabling-dynamic-dispatch>Enabling Dynamic Dispatch</h2><p>The key to this lies in how dynamic dispatch works in, e.g., C++. The class methods implicitly receive a pointer to the object, named <strong><code>this</code></strong>. Even if the pointer is of a base class type, it points to an object of the class that we instantiated, whether it is the base class or the derived class. That in turn holds a reference to its own set of methods. The same effect can be achieved in Go if we somehow emulate the <strong><code>this</code></strong> pointer. How do we do that? Like so:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Greeter</span> <span style=color:#66d9ef>interface</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>Greeter</span>, <span style=color:#66d9ef>string</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>GenHello</span>(<span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>g</span> <span style=color:#a6e22e>Greeter</span>, <span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Println</span>(<span style=color:#a6e22e>g</span>.<span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span>))
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>From the previous section, we had understood that type substitution can be achieved through interfaces. To solve our problem of making <code>SayHello()</code> call <code>GenHello()</code> on the right type, we pass it an instance of the concerned type through a <code>Greeter</code> interface parameter and make it call <code>GenHello()</code> on the interface parameter. <em>Voila!</em> Now our method can automatically call the correct instance of the overridden function and we have Dynamic Dispatch!</p><p>Here’s the revised code in full:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> (
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;fmt&#34;</span>
+</span></span><span style=display:flex><span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Greeter</span> <span style=color:#66d9ef>interface</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>Greeter</span>, <span style=color:#66d9ef>string</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>GenHello</span>(<span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Hello</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>greeting</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>g</span> <span style=color:#a6e22e>Greeter</span>, <span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Println</span>(<span style=color:#a6e22e>g</span>.<span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span>))
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>h</span> <span style=color:#a6e22e>Hello</span>) <span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>h</span>.<span style=color:#a6e22e>greeting</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; &#34;</span> <span style=color:#f92672>+</span> <span style=color:#a6e22e>to</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;!&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>NewHello</span>(<span style=color:#a6e22e>msg</span> <span style=color:#66d9ef>string</span>) <span style=color:#a6e22e>Hello</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>Hello</span>{<span style=color:#a6e22e>msg</span>}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>AltHello</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>greeting</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>Hello</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>a</span> <span style=color:#a6e22e>AltHello</span>) <span style=color:#a6e22e>GenHello</span>(<span style=color:#a6e22e>to</span> <span style=color:#66d9ef>string</span>) <span style=color:#66d9ef>string</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>a</span>.<span style=color:#a6e22e>greeting</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;Alt&#39; &#34;</span> <span style=color:#f92672>+</span> <span style=color:#a6e22e>to</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;!&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>NewAltHello</span>(<span style=color:#a6e22e>msg</span> <span style=color:#66d9ef>string</span>) <span style=color:#a6e22e>AltHello</span> {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>AltHello</span>{<span style=color:#a6e22e>msg</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; `&#34;</span>, <span style=color:#a6e22e>NewHello</span>(<span style=color:#e6db74>&#34;&#34;</span>)}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>g</span>, <span style=color:#a6e22e>ag</span> <span style=color:#a6e22e>Greeter</span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>g</span> = <span style=color:#a6e22e>NewHello</span>(<span style=color:#e6db74>&#34;Hello&#34;</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>g</span>.<span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>g</span>, <span style=color:#e6db74>&#34;World&#34;</span>) <span style=color:#75715e>// Hello World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>ag</span> = <span style=color:#a6e22e>NewAltHello</span>(<span style=color:#e6db74>&#34;Hello&#34;</span>)
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>ag</span>.<span style=color:#a6e22e>SayHello</span>(<span style=color:#a6e22e>ag</span>, <span style=color:#e6db74>&#34;World&#34;</span>) <span style=color:#75715e>// Hello `Alt&#39; World!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>And here’s the output:</p><pre tabindex=0><code>Hello World!
+Hello `Alt&#39; World!
+</code></pre><p>That’s exactly what we wanted!</p><h2 id=conclusion>Conclusion</h2><p>There are three semantic aspects to classic OOP inheritance – inheriting implementation, type substitution and dynamic dispatch of overridden methods. We have seen how we can use type embedding to inherit the implementation, interfaces for type substitution and passing an interface parameter to a method to enable dynamic dispatch.</p><p>Although Go does not support classes and inheritance in the classic OOP sense, understanding how to achieve the effects of inheritance in part or whole would help in designing applications meant to be written in Go. Go separates implementation inheritance from type substitution and makes dynamic dispatch more explicit and deliberate. This could potentially help in coming up with cleaner design or avoiding mistakes in design modification since the decision to use one of these features does not implicitly enable the others.</p></article><hr><div style=display:flex;width:100%><div style=width:50%><p style=text-align:left>Previous Post:<br><a href=https://tahirhashmi.com/posts/2013/10/28/mapping-oo-interfaces-to-rest/>Mapping OO Interfaces to REST</a></p></div><div style=width:50%><p style=text-align:right>Next Post:<br><a href=https://tahirhashmi.com/posts/2018/06/01/best-feature-of-go/>The Best Feature of Go</a></p></div></div></main></div><div id=sidebar><nav class=sidebar-nav><ul><li><a class=sidebar-nav-item href=/posts/ title=Articles>Articles</a></li><li><a class=sidebar-nav-item href=/about/ title=About>About</a></li><li><a class=sidebar-nav-item href=/photos/ title=Photos>Photos</a></li><li><a class=sidebar-nav-item href=/categories/photography/ title=photography>photography</a></li><li><a class=sidebar-nav-item href=/categories/programming/ title=programming>programming</a></li><li><a class=sidebar-nav-item href=/categories/reviews/ title=reviews>reviews</a></li><li><a class=sidebar-nav-item href=/categories/technology/ title=technology>technology</a></li></ul><aside class=toc><h4>On this page</h4><nav id=TableOfContents><ul><li><a href=#the-task>The Task</a></li><li><a href=#type-embedding-and-implementation-inheritance>Type Embedding and Implementation Inheritance</a></li><li><a href=#type-substitution-through-interfaces>Type Substitution Through Interfaces</a></li><li><a href=#enabling-dynamic-dispatch>Enabling Dynamic Dispatch</a></li><li><a href=#conclusion>Conclusion</a></li></ul></nav></aside></nav></div><div id=section2><p><a href=https://tahirhashmi.com/posts/>Articles</a></p></div><div id=logo><a href=/><svg id="svgLogo" baseProfile="full" xmlns="https://www.w3.org/2000/svg" viewBox="0 0 400 100" preserveAspectRatio="xMidYMid"><radialGradient id="logoGradient"><stop offset="30%" stop-color="#00ff80"/><stop offset="67%" stop-color="#00c000"/><stop offset="100%" stop-color="#606000"/></radialGradient><polygon points="0, 67 160, 0 200, 100 240, 0 400, 67 240, 33 200, 67 160, 33" fill="url(#logoGradient)"/></svg></a></div><div id=space><p>Tahir Hashmi</p></div><footer id=footer>mail@tahirhashmi.com
+| <a href=https://flickr.com/photos/code_martial/>Flickr</a>
+| <a href=https://github.com/codemartial>Github</a>
+| <a href=https://www.linkedin.com/in/tahirhashmi>LinkedIn</a>
+| <a href=https://twitter.com/code_martial>Twitter</a>
+| <a href=https://tahirhashmi.com/index.xml>RSS</a>
+| &copy; 2022 Tahir Hashmi. All rights reserved.</footer><div class=splash></div></body></html>
