@@ -1,0 +1,140 @@
+<!doctype html><html lang=en-GB><head><meta charset=utf-8><meta name=viewport content="width=device-width"><title>Building Levee: A Self-Tuning Circuit Breaker, by Tahir Hashmi</title><meta name=description content="From smartcb in 2017 to Levee in 2024 - the evolution of a self-tuning circuit breaker that adapts to traffic patterns instead of relying on static thresholds"><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=manifest href=/site.webmanifest><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><meta name=msapplication-TileColor content="#da532c"><link rel=canonical href=https://tahirhashmi.com/posts/building-levee-self-tuning-cb/><meta property="og:url" content="https://tahirhashmi.com/posts/building-levee-self-tuning-cb/"><meta property="og:site_name" content="Tahir Hashmi"><meta property="og:title" content="Building Levee: A Self-Tuning Circuit Breaker"><meta property="og:description" content="From smartcb in 2017 to Levee in 2024 - the evolution of a self-tuning circuit breaker that adapts to traffic patterns instead of relying on static thresholds"><meta property="og:locale" content="en_GB"><meta property="og:type" content="article"><meta property="article:section" content="posts"><meta property="article:published_time" content="2025-12-21T10:00:00+05:30"><meta property="article:modified_time" content="2025-12-28T20:39:59+07:00"><meta property="article:tag" content="Go"><meta property="article:tag" content="Circuit-Breaker"><meta property="article:tag" content="Resilience"><meta property="article:tag" content="Distributed-Systems"><meta name=twitter:card content="summary"><meta name=twitter:title content="Building Levee: A Self-Tuning Circuit Breaker"><meta name=twitter:description content="From smartcb in 2017 to Levee in 2024 - the evolution of a self-tuning circuit breaker that adapts to traffic patterns instead of relying on static thresholds"><meta itemprop=name content="Building Levee: A Self-Tuning Circuit Breaker"><meta itemprop=description content="From smartcb in 2017 to Levee in 2024 - the evolution of a self-tuning circuit breaker that adapts to traffic patterns instead of relying on static thresholds"><meta itemprop=datePublished content="2025-12-21T10:00:00+05:30"><meta itemprop=dateModified content="2025-12-28T20:39:59+07:00"><meta itemprop=wordCount content="1490"><meta itemprop=keywords content="Go,Circuit-Breaker,Resilience,Distributed-Systems"><link rel=alternate type=application/rss+xml href=https://tahirhashmi.com/posts/index.xml title="Tahir Hashmi"><link rel=stylesheet href=/assets/css/main.min.9ef4f0d2bccaad57d657e4962a1770186ebd0e8d4682063087543ab4e7690790.css media=all><link rel=preload as=font href=/fonts/Probert.woff2 type=font/woff2 crossorigin=anonymous><link rel=preload as=font href=/fonts/ProbertBold.woff2 type=font/woff2 crossorigin=anonymous><link rel=preload as=font href=/fonts/Oxanium.woff2 type=font/woff2 crossorigin=anonymous><link rel=preload as=font href=/fonts/BerkeleyMonoVariable-Regular.woff2 type=font/woff2 crossorigin=anonymous><script defer src=/assets/js/main.min.4bd9907fab31b5afc7aa83619fd5c1c9076a2458c233109023b20f6c70f6584b.js></script></head><body class=page><div id=headline><h1>Building Levee: A Self-Tuning Circuit Breaker</h1></div><div id=content><main><article><time datetime="2025-12-21 10:00:00 +0530 +0530" itemprop=datePublished>December 21, 2025</time><h2 id=the-view-from-the-hot-seat>The View From the Hot Seat</h2><p>Circuit breakers are wonderful intermediaries between two high-traffic
+synchronous network services. They prevent the caller from overloading
+the callee when the latter is in trouble. In turn, this protects the
+caller from getting backed up with too many pending requests. This is
+all assuming that the circuit breaker is well configured, as are the
+timeouts and rate limits.</p><p>Unfortunately, I&rsquo;ve seen way too many incidents where the &ldquo;well
+configured&rdquo; assumption is not held true. Too often, concurrency is
+allowed to bloat until it exhausts resources and that in turn happens
+because equally often, the timeout is set as if it were a prayer
+instead of a protective limit.</p><p>Once I identified this failure pattern, I though of doing something
+about it.</p><h2 id=first-attempt-smartcb-2017>First Attempt: <strong>smartcb</strong> (2017)</h2><p>My first serious attempt was
+<a href=https://github.com/codemartial/smartcb target=_blank rel=noopener><strong>smartcb</strong></a>, built in
+October 2017. The insight was that circuit breakers should learn from
+observed error rates rather than relying on static thresholds.</p><p><strong>smartcb</strong> wrapped the popular
+<a href=https://github.com/rubyist/circuitbreaker target=_blank rel=noopener>rubyist/circuitbreaker</a>
+library and added a learning phase. It observed the baseline error
+profile of protected tasks and adjusted tripping thresholds using
+exponential weighted moving averages. I implemented Adjusted Wald
+confidence intervals for making statistically valid decisions with
+limited samples.</p><div class=highlight><pre tabindex=0 style=color:#c9c9c9;background-color:#282c34;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span>st <span style=color:#bc74c4>:=</span> smartcb<span style=color:#56b6c2>.</span><span style=color:#57c7ff>NewSmartTripper</span><span style=color:#56b6c2>(</span>taskQPS<span style=color:#56b6c2>,</span> smartcb<span style=color:#56b6c2>.</span><span style=color:#57c7ff>NewPolicies</span><span style=color:#56b6c2>())</span>
+</span></span><span style=display:flex><span>scb <span style=color:#bc74c4>:=</span> smartcb<span style=color:#56b6c2>.</span><span style=color:#57c7ff>NewSmartCircuitBreaker</span><span style=color:#56b6c2>(</span>st<span style=color:#56b6c2>)</span>
+</span></span></code></pre></div><p>The approach worked better than static thresholds. But <strong>smartcb</strong> was a
+wrapper around an existing library, constrained by its design
+decisions. The configuration still required specifying expected
+QPS. The learning phase was a separate mode rather than continuous
+adaptation. Most importantly, it did no concurrency limiting.</p><p>Anyway, the project served its purpose and I moved on. But the problem
+stayed with me.</p><h2 id=levee-december-2024><strong>Levee</strong> (December 2024)</h2><p>After a gap of seven years, this topic stirred up in my mind
+again. Although, I can&rsquo;t recall as of this writing what prompted the
+thought, but I suspect it has something to do with service meshes. And
+concurrency.</p><p><strong>Levee</strong> was designed around a single configuration: the SLO. Tell it
+your target success rate and timeout, and it figures out everything
+else.</p><div class=highlight><pre tabindex=0 style=color:#c9c9c9;background-color:#282c34;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span>slo <span style=color:#bc74c4>:=</span> levee<span style=color:#56b6c2>.</span>SLO<span style=color:#56b6c2>{</span>
+</span></span><span style=display:flex><span>    SuccessRate<span style=color:#56b6c2>:</span> <span style=color:#56b6c2>0.95</span><span style=color:#56b6c2>,</span>
+</span></span><span style=display:flex><span>    Timeout<span style=color:#56b6c2>:</span>     time<span style=color:#56b6c2>.</span>Millisecond <span style=color:#bc74c4>*</span> <span style=color:#56b6c2>500</span><span style=color:#56b6c2>,</span>
+</span></span><span style=display:flex><span>    Warmup<span style=color:#56b6c2>:</span>      time<span style=color:#56b6c2>.</span>Second <span style=color:#bc74c4>*</span> <span style=color:#56b6c2>300</span><span style=color:#56b6c2>,</span>
+</span></span><span style=display:flex><span><span style=color:#56b6c2>}</span>
+</span></span><span style=display:flex><span>l <span style=color:#bc74c4>:=</span> levee<span style=color:#56b6c2>.</span><span style=color:#57c7ff>NewLevee</span><span style=color:#56b6c2>(</span>slo<span style=color:#56b6c2>)</span>
+</span></span></code></pre></div><p>The initial implementation landed on December 29, 2024. Basic
+functionality came together quickly. Concurrent access support
+followed the next day. Then I dithered on to other things for almost a
+year.</p><h2 id=the-measurement-problem>The Measurement Problem</h2><p>One reason I didn&rsquo;t return to <strong>Levee</strong> was this fundamental question: how
+do you prove that a self-tuning circuit breaker actually works better
+than a well-tuned static one?</p><p>I needed to simulate realistic traffic patterns and measure decisions
+against ground truth. This meant building a load generator that could
+produce months of synthetic traffic in seconds.</p><h3 id=building-loadgen>Building <strong>loadgen</strong></h3><p>This is where I leaned into <a href=https://claude.com/product/claude-code target=_blank rel=noopener>Claude
+Code</a>, an AI assistant from
+Anthropic, to help build a proper synthetic load generator. I had been
+dabbling with AI coding assistants since ChatGPT and Github Co-pilot
+had launched. But nothing clicked for my like Claude Code with Emacs,
+which I landed up with last month.</p><p>The generator needed statistical realism: Poisson arrival processes,
+heavy-tailed latency distributions matching real p50/p99 targets,
+configurable error rates. It needed to model multiple load phases for
+daily traffic patterns. Most importantly, it needed to run on
+simulated time so even days&rsquo; worth of traffic could be simulated in
+seconds.</p><p>Efficiency was critical since we would generate hundreds of millions
+of events per benchmark run. The final implementation generates 15+
+million events per second with 12 bytes and 0.5 allocations per event.</p><p><a href=https://github.com/codemartial/loadgen target=_blank rel=noopener><strong>loadgen</strong></a> became its own
+project, built for testing <strong>levee</strong> but useful beyond that for any
+simulation-based testing.</p><h2 id=simulation-first-development>Simulation-First Development</h2><p>With <strong>loadgen</strong> providing realistic traffic, I needed <strong>Levee</strong> to work with
+simulated time rather than wall clocks. This drove a significant API
+change: adding explicit timestamp parameters to all methods.</p><p>The original API wrapped protected calls:</p><div class=highlight><pre tabindex=0 style=color:#c9c9c9;background-color:#282c34;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span>state<span style=color:#56b6c2>,</span> err <span style=color:#bc74c4>:=</span> l<span style=color:#56b6c2>.</span><span style=color:#57c7ff>Call</span><span style=color:#56b6c2>(</span><span style=color:#7fbaf5>func</span><span style=color:#56b6c2>()</span> <span style=color:#57c7ff;font-weight:700>error</span> <span style=color:#56b6c2>{</span>
+</span></span><span style=display:flex><span>    <span style=color:#7fbaf5>return</span> <span style=color:#57c7ff>callBackend</span><span style=color:#56b6c2>()</span>
+</span></span><span style=display:flex><span><span style=color:#56b6c2>})</span>
+</span></span></code></pre></div><p>For simulation testing, I needed to control timing explicitly. This
+led to the out-of-band API:</p><div class=highlight><pre tabindex=0 style=color:#c9c9c9;background-color:#282c34;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span>stateChange<span style=color:#56b6c2>,</span> err <span style=color:#bc74c4>:=</span> l<span style=color:#56b6c2>.</span><span style=color:#57c7ff>Start</span><span style=color:#56b6c2>(</span>timestamp<span style=color:#56b6c2>)</span>
+</span></span><span style=display:flex><span><span style=color:#3e4460>// ... simulate the call ...</span>
+</span></span><span style=display:flex><span>l<span style=color:#56b6c2>.</span><span style=color:#57c7ff>Success</span><span style=color:#56b6c2>(</span>endTimestamp<span style=color:#56b6c2>,</span> duration<span style=color:#56b6c2>)</span>
+</span></span></code></pre></div><p>What started as a testing requirement turned out to have broader
+applications. Stream processors could use <strong>Levee</strong> with event-time
+semantics. <strong>Levee</strong> could be used as a shadow with an existing breaker to
+perform comparitive testing. The API became more flexible by accident.</p><h3 id=the-prescient-breaker>The Prescient Breaker</h3><p>Realistic traffic was only half the problem. I still needed ground
+truth.</p><p>The solution was the Prescient Breaker: an oracle that knows the
+future from load specs. It opens exactly when the backend becomes
+unhealthy and closes exactly when it recovers. Zero detection
+lag. Perfect decisions. Impossible in reality, but it provides the
+upper bound for evaluation.</p><p>Every circuit breaker decision could now be scored against perfection:</p><ul><li><strong>BadTraffic</strong>: Requests allowed when Prescient was OPEN (letting
+bad traffic through)</li><li><strong>LostBusiness</strong>: Requests blocked when Prescient was CLOSED
+(blocking good traffic)</li></ul><p>This was a good start but there was still something missing from just
+a count of requests. When a system is under stress, you could push a
+thousand requests through it as long as the RPS is low enough. Try to
+send a short burst of traffic, however, and you risk breaking the
+camel&rsquo;s back.</p><p>So I decided that each request was worth 10 penalty points at 10x RPS
+if each request was worth 1 penalty point at 1 RPS. So that led to the
+RPS-squared scoring. I. e. <code>score = RPS * Traffic = RPS * (RPS * t)</code>.</p><p>Arguably, this weighing applies to lost business traffic as well. I
+think protecting a 10x flash sale spike lasting a minute is more
+valuable than 10 minutes of BAU. This is how I score the benchmarks
+but if you disagree, you&rsquo;ll find that <strong>Levee</strong> is still better at
+preventing lost business situations than a breaker that&rsquo;s tuned for
+regular traffic.</p><h3 id=the-cyber-monday-benchmark>The Cyber Monday Benchmark</h3><p>To test the adaptability of <strong>Levee</strong> vs. regular static circuit
+breakers, I needed a benchmark scenario that would flex quite a
+bit. It wasn&rsquo;t too hard to come up with a Cyber Monday sale as the
+ideal situation because that&rsquo;s my lived nightmare! So I conjured up a
+28 hour test mimicking a Cyber Monday gone not-so-well.</p><p>It starts with 4 hours of Sunday night calm, then a 15x traffic spike
+at midnight that overwhelms an under-provisioned backend. Retry storms
+make things worse before they get better. The rest of the day brings
+hourly sales events with 3-8x traffic spikes, a massive 48x spike at
+10 AM, gradual database degradation, and a second major incident at 06
+PM.</p><p>I tested <strong>Levee</strong> against two carefully tuned static circuit
+breakers. <strong>Static-BAU</strong> was optimized for normal traffic
+patterns. <strong>Static-Peak</strong> was optimized for high-traffic
+conditions. Both were derived from probabilistic analysis of expected
+failure patterns, something which only the most disciplined teams ever
+manage to do in the first place.</p><h3 id=results>Results</h3><p><strong>Levee</strong> achieved over 2x better overall decision quality than either
+static configuration:</p><ul><li>Up to 10x faster incident detection than Static-Peak</li><li>Up to 1.7x less unnecessary blocking than Static-BAU</li></ul><div class=highlight><pre tabindex=0 style=color:#c9c9c9;background-color:#282c34;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=display:flex><span><span style=color:#bc74c4>==============================================================================================================</span>
+</span></span><span style=display:flex><span>  COMPARATIVE SUMMARY - All Candidates vs Prescient <span style=color:#bc74c4>(</span>Ideal<span style=color:#bc74c4>)</span>
+</span></span><span style=display:flex><span><span style=color:#bc74c4>==============================================================================================================</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Candidate   <span style=color:#56b6c2>|</span> Blocked <span style=color:#56b6c2>|</span>  Allowed <span style=color:#56b6c2>|</span> Flap <span style=color:#56b6c2>|</span> FalseAlarm <span style=color:#56b6c2>|</span> LateDetect <span style=color:#56b6c2>|</span> BadTraffic <span style=color:#56b6c2>|</span> LostBusiness <span style=color:#56b6c2>|</span> TotalPenalty
+</span></span><span style=display:flex><span>--------------------------------------------------------------------------------------------------------------
+</span></span><span style=display:flex><span>Prescient   <span style=color:#56b6c2>|</span>  <span style=color:#56b6c2>773707</span> <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>55741451</span> <span style=color:#56b6c2>|</span>    <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>            <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>            <span style=color:#56b6c2>0</span>
+</span></span><span style=display:flex><span>Levee       <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>4146182</span> <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>52386678</span> <span style=color:#56b6c2>|</span>   <span style=color:#56b6c2>74</span> <span style=color:#56b6c2>|</span>         <span style=color:#56b6c2>11</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>       <span style=color:#56b6c2>2346</span> <span style=color:#56b6c2>|</span>        <span style=color:#56b6c2>16699</span> <span style=color:#56b6c2>|</span>        <span style=color:#56b6c2>19044</span>
+</span></span><span style=display:flex><span>Static-Peak <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>3850335</span> <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>52664823</span> <span style=color:#56b6c2>|</span>    <span style=color:#56b6c2>8</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>1</span> <span style=color:#56b6c2>|</span>      <span style=color:#56b6c2>21585</span> <span style=color:#56b6c2>|</span>         <span style=color:#56b6c2>7527</span> <span style=color:#56b6c2>|</span>        <span style=color:#56b6c2>29111</span>
+</span></span><span style=display:flex><span>Static-BAU  <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>4351238</span> <span style=color:#56b6c2>|</span> <span style=color:#56b6c2>52176701</span> <span style=color:#56b6c2>|</span>   <span style=color:#56b6c2>38</span> <span style=color:#56b6c2>|</span>         <span style=color:#56b6c2>10</span> <span style=color:#56b6c2>|</span>          <span style=color:#56b6c2>0</span> <span style=color:#56b6c2>|</span>      <span style=color:#56b6c2>13387</span> <span style=color:#56b6c2>|</span>        <span style=color:#56b6c2>31706</span> <span style=color:#56b6c2>|</span>        <span style=color:#56b6c2>45092</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#bc74c4;font-style:italic>BadTraffic</span> <span style=color:#bc74c4>=</span> √Σ<span style=color:#bc74c4>(</span>RPS²<span style=color:#bc74c4>)</span> when Prescient OPEN but CB allowed <span style=color:#bc74c4>(</span><span style=color:#bc74c4;font-style:italic>lower</span> <span style=color:#bc74c4>=</span> better<span style=color:#bc74c4>)</span>
+</span></span><span style=display:flex><span><span style=color:#bc74c4;font-style:italic>LostBusiness</span> <span style=color:#bc74c4>=</span> √Σ<span style=color:#bc74c4>(</span>RPS²<span style=color:#bc74c4>)</span> when Prescient CLOSED but CB blocked <span style=color:#bc74c4>(</span><span style=color:#bc74c4;font-style:italic>lower</span> <span style=color:#bc74c4>=</span> better<span style=color:#bc74c4>)</span>
+</span></span><span style=display:flex><span><span style=color:#bc74c4>==============================================================================================================</span>
+</span></span></code></pre></div><p>The static configurations demonstrated the fundamental trade-off that
+self-tuning eliminates. <strong>Static-BAU</strong> was responsive but unstable,
+generating false alarms during traffic spikes. <strong>Static-Peak</strong> was
+stable but slow, letting lots of bad traffic through while waiting to
+confirm incidents.</p><p><strong>Levee</strong> adapted continuously and provided fast response without
+triggering too many false alarms as well as quick but not premature
+recovery with minimal flapping compared to the competitors.</p><h2 id=full-circle>Full Circle</h2><p>The final <strong>Levee</strong> implementation brought back ideas from <strong>smartcb</strong>:
+Adjusted Wald confidence intervals for statistically valid decisions
+with limited samples. But now they operated continuously rather than
+in a separate learning phase. The system also added latency spike
+detection, ring buffer metrics for predictable memory usage, and state
+persistence for surviving restarts.</p><p>Seven years after <strong>smartcb</strong>, the circuit breaker tuning problem finally
+had a solution that I can accept.</p><h2 id=whats-next>What&rsquo;s Next</h2><p><strong>Levee</strong> is ready for real world trials. The core is solid, the benchmarks
+are comprehensive, and the API is stable. I believe a network of <strong>levee</strong>
+instances would operate like a decentralised service mesh, with regard
+to resiliency, without the overhead of proxying, metrics aggregation,
+proliferation of yamls.</p><p>The code is at <a href=https://github.com/codemartial/levee target=_blank rel=noopener>https://github.com/codemartial/levee</a>. Take it for a
+test drive in your environment and let me know how it goes!</p></article><div style=display:flex;width:100%><div style=width:50%><p style=text-align:left>Previous Post:<br><a href=https://tahirhashmi.com/posts/2025-03-09-telephoto-potential-scoring/>Scoring Telephoto Lenses for Potential</a></p></div><div style=width:50%></p></div></div></main></div><div id=sidebar><nav class=sidebar-nav><ul><li><a class=sidebar-nav-item href=/posts/ title="Articles about Software, Photography and More">Articles</a></li><li><a class=sidebar-nav-item href=/about/ title="About Tahir and This Website">About</a></li><li><a class=sidebar-nav-item href=/photos/ title="Photo Albums">Photos</a></li><li><a class=sidebar-nav-item href=/categories/metacomputer/ title=metacomputer™>metacomputer™</a></li><li><a class=sidebar-nav-item href=/categories/opinion/ title=opinion>opinion</a></li><li><a class=sidebar-nav-item href=/categories/photography/ title=photography>photography</a></li><li><a class=sidebar-nav-item href=/categories/programming/ title=programming>programming</a></li><li><a class=sidebar-nav-item href=/categories/reviews/ title=reviews>reviews</a></li><li><a class=sidebar-nav-item href=/categories/technology/ title=technology>technology</a></li></ul><aside class=toc><h4>On this page</h4><nav id=TableOfContents><ul><li><a href=#the-view-from-the-hot-seat>The View From the Hot Seat</a></li><li><a href=#first-attempt-smartcb-2017>First Attempt: <strong>smartcb</strong> (2017)</a></li><li><a href=#levee-december-2024><strong>Levee</strong> (December 2024)</a></li><li><a href=#the-measurement-problem>The Measurement Problem</a><ul><li><a href=#building-loadgen>Building <strong>loadgen</strong></a></li></ul></li><li><a href=#simulation-first-development>Simulation-First Development</a><ul><li><a href=#the-prescient-breaker>The Prescient Breaker</a></li><li><a href=#the-cyber-monday-benchmark>The Cyber Monday Benchmark</a></li><li><a href=#results>Results</a></li></ul></li><li><a href=#full-circle>Full Circle</a></li><li><a href=#whats-next>What&rsquo;s Next</a></li></ul></nav></aside><div id=fastSearch><span id=cursor><input id=searchInput tabindex=0 placeholder=search></span><ul id=searchResults></ul></div></nav></div><div id=section2><p><a href=https://tahirhashmi.com/posts/>Articles</a></p></div><div id=logo><a href=/ title=Home><svg id="svgLogo" baseProfile="full" viewBox="0 0 400 100" preserveAspectRatio="xMidYMid"><radialGradient id="logoGradient"><stop offset="30%" stop-color="#00ff80"/><stop offset="67%" stop-color="#00c000"/><stop offset="100%" stop-color="#606000"/></radialGradient><polygon points="0, 67 160, 0 200, 100 240, 0 400, 67 240, 33 200, 67 160, 33" fill="url(#logoGradient)"/></svg></a></div><div id=space><p>Tahir Hashmi</p></div><footer id=footer>mail@tahirhashmi.com
+| <a href=https://flickr.com/photos/code_martial/>Flickr</a>
+| <a href=https://github.com/codemartial>Github</a>
+| <a href=https://www.linkedin.com/in/tahirhashmi>LinkedIn</a>
+| <a href=https://twitter.com/code_martial>Twitter</a>
+| <a href=https://tahirhashmi.com/posts/index.xml type=.mediatype.type rel=.Rel>RSS</a> | &copy; 2004 - 2025 Tahir Hashmi. All rights reserved.</footer><div class=splash></div><div class=glow></div></body></html>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Circuit-Breaker on Tahir Hashmi</title><link>https://tahirhashmi.com/tags/circuit-breaker/</link><description>Recent content in Circuit-Breaker on Tahir Hashmi</description><generator>Hugo</generator><language>en-GB</language><managingEditor>mail@tahirhashmi.com (Tahir Hashmi)</managingEditor><webMaster>mail@tahirhashmi.com (Tahir Hashmi)</webMaster><lastBuildDate>Sun, 28 Dec 2025 20:39:59 +0700</lastBuildDate><atom:link href="https://tahirhashmi.com/tags/circuit-breaker/index.xml" rel="self" type="application/rss+xml"/><item><title>Building Levee: A Self-Tuning Circuit Breaker</title><link>https://tahirhashmi.com/posts/building-levee-self-tuning-cb/</link><pubDate>Sun, 21 Dec 2025 10:00:00 +0530</pubDate><author>mail@tahirhashmi.com (Tahir Hashmi)</author><guid>https://tahirhashmi.com/posts/building-levee-self-tuning-cb/</guid><description>&lt;h2 id="the-view-from-the-hot-seat"&gt;The View From the Hot Seat&lt;/h2&gt;
+&lt;p&gt;Circuit breakers are wonderful intermediaries between two high-traffic
+synchronous network services. They prevent the caller from overloading
+the callee when the latter is in trouble. In turn, this protects the
+caller from getting backed up with too many pending requests. This is
+all assuming that the circuit breaker is well configured, as are the
+timeouts and rate limits.&lt;/p&gt;
+&lt;p&gt;Unfortunately, I&amp;rsquo;ve seen way too many incidents where the &amp;ldquo;well
+configured&amp;rdquo; assumption is not held true. Too often, concurrency is
+allowed to bloat until it exhausts resources and that in turn happens
+because equally often, the timeout is set as if it were a prayer
+instead of a protective limit.&lt;/p&gt;</description></item></channel></rss>
